@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lute-shona"
+version = "0.1.0"
+description = "Shona language parser plugin for Lute3, splitting agglutinative noun/verb morphology into trackable tokens."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["lute3"]
+
+[project.entry-points."lute.plugin.parse"]
+lute_shona = "lute_shona_parser.parser:ShonaParser"
+
+[tool.setuptools.packages.find]
+include = ["lute_shona_parser*"]
