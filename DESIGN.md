@@ -651,6 +651,111 @@ lexicon, the way lute-xhosa's validation stories were re-run after
 *their* import, hasn't happened yet and would be the way to find
 anything this pass missed.
 
+**Update, next session**: that "hasn't happened yet" turned out to be
+exactly right — the very next bulk-import round (below) surfaced two
+real collisions rooted in *this* pass's new short verb roots (`b`,
+`rw`), found only because a second, independent set of test words
+(from a different source) exercised them. Confirms the general
+lesson stated above: short roots are collision-prone, and the only
+reliable way to find the collisions is to keep testing against text
+this specific pass wasn't built against.
+
+## 9b. A second bulk source: shona-spacy's manually-verified lexicon
+
+[shona-spacy](https://github.com/HappymoreMasoka/shona-spacy)
+(arXiv:2511.16680) is a real, actively-maintained open-source rule-based
+Shona morphological analyzer — independently built, not affiliated with
+this project, doing a similar thing (noun-class detection, subject
+concords, tense markers) with a different architecture (spaCy pipeline
+component rather than a Lute parser plugin). Worth knowing about on its
+own merits, and its repo also ships a `shona_lexicon.json` of 136
+manually-verified entries (**MIT licensed**, per its `pyproject.toml` —
+note the GitHub repo itself has no LICENSE file or GitHub-detected
+license, so this was confirmed from the package metadata specifically,
+not assumed from "it's on GitHub").
+
+**A source explicitly rejected from the same repo, worth recording
+why**: `shona_tokens_with_classes.csv`, an 8MB file also in that repo.
+Inspecting a sample before use (same discipline as every other source
+here) showed it's unverified social-media token-frequency data —
+English words, typos, and misspellings mixed in with real Shona, each
+run through an ungated heuristic prefix-guesser (e.g. `"mothers"` gets
+tagged class 9 with prefix `"m"`, as if `"others"` were a Shona root).
+Importing this would have reintroduced exactly the overstemming problem
+this whole design exists to avoid. A repo being real and permissively
+licensed doesn't make every file in it usable — each data file still
+needs its own quality check.
+
+**Extraction was manual**, not scripted, given the small size (99 noun
+entries, the rest pronouns/adjectives/etc. not directly usable here) and
+because the JSON's `lemma` field turned out to be unreliable as a direct
+root source for agentive nouns derived from verbs — e.g. `"Mubiki"`
+("cook", cl.1) lists `lemma: "bika"`, the *verb's* citation form, not
+the noun's own stem `"biki"`; the two only coincide for simple,
+non-derived nouns. Roots were instead derived from each entry's `token`
+field by stripping the class prefix using this file's own
+`NOUN_CLASS_PREFIXES` table, cross-checking `lemma`/`gloss` for sense
+rather than trusting either blindly. A few entry types needed their own
+handling: "Mupanda 17/18" locatives on an already-fully-formed noun
+(`"Kuchikoro"` = `ku-` + `"chikoro"`, not `ku-` + `chi-` + `"koro"`)
+became whole-noun entries, matching the existing `musha`/`tsime`/`rwizi`
+pattern; "Mupanda 20" nominalized infinitives (`"Kutya"` = "fear", from
+`-tya-` "to fear") went into `VERB_ROOT_LEXICON` instead, since the
+`ku-` + root + terminal-vowel shape is identical whether the resulting
+word is functioning as a noun or verb in a given sentence; diminutive/
+augmentative entries followed the existing `kamunhu`/`tuvanhu`
+whole-noun pattern. One entry (`"Gombarume"`, "big/strong man") was
+skipped outright — its augmentative prefix `gomba-` isn't in
+`NOUN_CLASS_PREFIXES`, and one example isn't enough to confirm it's a
+real, productive prefix rather than a one-off compound.
+
+**Testing this small set directly caught two more real collisions**,
+both rooted in the *previous* (Kaikki) round's new short roots — proof
+that "watch for collisions on new short roots" isn't a one-time check,
+it needs to happen every time the lexicon grows, against whatever new
+text is available, not just once:
+- **`vabereki`** ("parents") wrongly resolved as `va` + `b`("steal") +
+  `er`(applicative) + `eki`, a spurious 2-deep-extension match onto the
+  1-letter `b` root added in the Kaikki round. The better fix wasn't a
+  `WORD_EXCEPTIONS` bypass but the actually-missing root: adding
+  `"berek"` ("-bereka-", to give birth/bear) makes `kubereka` resolve as
+  a *direct* lexicon hit (checked before any extension-stripping is
+  attempted, so it wins first) and `vabereki` resolve correctly as
+  `va`+`berek`+`i` (agentive: "those who bear [children]") — which also
+  fixes `kuberekwa` ("to be born", passive) for free via the existing
+  extension mechanism, without touching anything else. Confirmed
+  `kuba`/`vaba` ("steal") still resolve correctly afterward.
+- **`murwere`/`varwere`** ("patient/sick person(s)") wrongly resolved
+  as `mu`/`va` + `rw`("-rwa-", "to fight", one of the Kaikki round's new
+  roots) + `er`(applicative) + `ere`. Unlike `vabereki`, there's no
+  clean "add the missing root" fix here:
+  the real word is plausibly derived from `-rwar-` ("to be sick",
+  itself unseeded) via a vowel change (`rwar` → `rwer`), which is a
+  different *kind* of process (stem-internal vowel alternation, not
+  concatenation) than anything else this engine models. Fixed via
+  `WORD_EXCEPTIONS` rather than guessing at a vowel-alternation rule
+  from a single example.
+
+**One result looked wrong at first but wasn't**: `"mufundisi"`
+("pastor") resolves as `mu`+`fund`(learn)+`is`(causative)+`i`(agentive)
+— "one who causes others to learn." Checked against what's actually
+known about the word's etymology (`-fundisa-`, "to teach," is the
+standard causative of `-funda-`, "to learn," and "pastor/teacher" is
+its regular agentive form) rather than assumed: this is the real
+derivation, not a coincidental collision, so it was left alone —
+neither added to `WORD_EXCEPTIONS` nor treated as needing a fix.
+
+**Net result**: 46 more noun roots, 5 more verb roots (`shand`, `fung`,
+`ty`, `shushikan`, `berek`), 2 new `WORD_EXCEPTIONS` entries. Small
+compared to the Kaikki round, but the real value of this pass wasn't
+the count — it was finding the `b`/`rw` collisions, which the Kaikki
+round's own (much larger) addition couldn't have surfaced on its own,
+precisely because nothing in that round's own vocabulary happened to
+exercise them. Reinforces the same lesson twice now: re-testing against
+*any* new real text, not just the text a given lexicon round was built
+from, is what actually finds collisions — the mechanism doesn't care
+which round introduced the colliding root.
+
 ## 10. Forking for another Bantu language (e.g. isiXhosa)
 
 This was discussed explicitly before Shona was built: **don't design a

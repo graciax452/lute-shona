@@ -109,12 +109,24 @@ PROPER_NOUNS = {
 # table is a two-way street: entries get added when a collision is
 # found, and removed once the underlying rule is confirmed and the
 # collision no longer applies -- don't leave stale exceptions around.
+#       - "murwere"/"varwere" ("patient/sick person(s)") -- verb-slot
+#         wrongly resolves via a 2-deep extension strip onto the new
+#         "rw" root (from the Kaikki bulk import's dialectal "-rwa-"
+#         fight): mu/va + rw + er(applicative) + ere = nonsense. Found
+#         testing shona-spacy's manually-verified lexicon (see the bulk-
+#         import comment on NOUN_ROOT_LEXICON below). The real word is
+#         plausibly derived from "-rwar-" (to be sick, itself unseeded)
+#         via a vowel change (rwar -> rwer) rather than simple
+#         concatenation -- not confirmed, so left as a whole-word
+#         exception rather than guessing at a vowel-alternation rule.
 WORD_EXCEPTIONS = {
     "mudzidzisi",
     "mukanwa",
     "kamba",
     "mudiki",
     "vadikisa",
+    "murwere",
+    "varwere",
 }
 
 # Past subject concords -- a confirmed, complete paradigm (not one-off
@@ -384,6 +396,67 @@ NOUN_ROOT_LEXICON = {
     "varavandi", "verengi", "vhakacho", "vhiri", "vhuro", "viri",
     "wayawaya", "wepu", "windo", "zai", "zamu", "zana", "zanda", "zezuru",
     "zino", "ziso", "zukuru", "zuva",
+
+    # --- Second bulk source: shona-spacy's manually-verified JSON
+    # lexicon, MIT licensed ---
+    # https://github.com/HappymoreMasoka/shona-spacy -- an open-source
+    # rule-based Shona morphological analyzer (arXiv:2511.16680). Its
+    # `shona_lexicon.json` (136 entries, "Verified manually" per its own
+    # comments field) is small but hand-checked, not machine-extracted.
+    # Explicitly NOT used: the same repo's `shona_tokens_with_classes.csv`
+    # (8MB) -- inspected before use and rejected, since it turned out to
+    # be unverified, noisy social-media token frequency data (English
+    # words, typos, and misspellings alongside real Shona, all run
+    # through an ungated heuristic prefix-guesser) rather than a real
+    # lexicon. Blindly importing it would have reintroduced exactly the
+    # overstemming risk this whole design exists to avoid -- see
+    # morphology.py's docstring.
+    #
+    # Extraction was manual, not scripted, given the small size (99 noun
+    # entries) and because the JSON's own `lemma` field turned out to be
+    # unreliable as a direct root source for agentive nouns derived from
+    # verbs (e.g. "Mubiki" ["cook", cl.1] lists lemma "bika", the verb's
+    # citation form, not the noun's own stem "biki" -- the two only
+    # coincide for simple nouns). Roots were instead derived from each
+    # entry's `token` field, stripping the class prefix using this
+    # file's own NOUN_CLASS_PREFIXES table (cross-checked against
+    # `lemma`/`gloss` for sense, not trusted blindly), the same
+    # discipline as the Kaikki import above. Entries under "Mupanda 17/
+    # 18" (locative ku-/mu- on an *already fully-formed* noun, e.g.
+    # "Kuchikoro" = ku- + "chikoro", not ku- + chi- + "koro") were added
+    # as whole-noun entries, matching the existing pattern already used
+    # for musha/tsime/rwizi etc. above. Entries under "Mupanda 20"
+    # (nominalized infinitives, e.g. "Kutya" = "fear", from the verb
+    # "-tya-" "to fear") went into VERB_ROOT_LEXICON instead, since the
+    # ku- + root + terminal-vowel shape is identical to the ordinary
+    # infinitive regardless of whether the resulting word is being used
+    # as a noun or verb in a given sentence -- same token boundaries
+    # either way, so no separate noun-side entry is needed. Diminutive/
+    # augmentative entries (ka-/tu-/zi-/zvi- + already-prefixed noun)
+    # follow the same whole-noun pattern as the diminutive entries
+    # already in this file (kamunhu/tuvanhu). One entry ("Gombarume",
+    # "big/strong man") was skipped -- its augmentative prefix "gomba-"
+    # isn't in NOUN_CLASS_PREFIXES and one example isn't enough to
+    # confirm it's a real, productive prefix rather than a one-off
+    # compound; not guessed at.
+    #
+    # Testing this small set directly (not just trusting the mechanism)
+    # caught two more real collisions, both from roots seeded in the
+    # *first* bulk-import round above -- see the WORD_EXCEPTIONS entries
+    # for "murwere"/"varwere" and the VERB_ROOT_LEXICON comment on
+    # "berek" for the mechanisms. One result looked wrong at first but
+    # turned out to be a genuinely correct compositional parse instead:
+    # "mufundisi" ("pastor") resolves as mu+fund(learn)+is(causative)+i
+    # (agentive) -- "one who causes [others] to learn," which is the
+    # real, standard etymology of that word, not a coincidental
+    # collision. Left alone deliberately, not added here or exempted.
+    "kuwasha", "rora", "koma", "rume", "pfumi", "rairidzi", "purisa",
+    "porofita", "kwasha", "roori", "dzimai", "shandi", "femberi",
+    "royi", "nyepi", "shavi", "shumiri", "batsiri", "gadziri", "fudzi",
+    "tambi", "perekedzi", "shanyi", "shambadzi", "chikoro",
+    "mabvazuva", "madokero", "makomo", "ndiro", "guta", "mapako",
+    "kati", "mhanza", "pfungwa", "pfumo", "pfuma", "pfambi", "mwana",
+    "vana", "mukadzi", "moto", "tunha",
 }
 
 # Closed set of word-initial verbal markers -- basic (present-tense-
@@ -537,6 +610,28 @@ VERB_ROOT_LEXICON = {
     "kweny", "kweret", "mw", "nyarar", "nyeng", "onek", "ones", "ot",
     "p", "rar", "rim", "rot", "rw", "sek", "simb", "tyair", "umb",
     "uray", "varavand", "vhar", "vir", "ziv", "zvar", "zvimb",
+
+    # --- From shona-spacy's manually-verified lexicon (see the matching
+    # comment above NOUN_ROOT_LEXICON) -- nominalized-infinitive ("Mupanda
+    # 20") entries whose underlying verb root wasn't already seeded.
+    "shand",  # kushanda - to work
+    "fung",   # kufunga - to think
+    "ty",     # kutya - to fear
+    "shushikan",  # kushushikana - to worry/be anxious -- added as one
+    # whole root rather than guessing a root+"-an-"(reciprocal) split;
+    # no independent confirmation either way.
+    "berek",  # kubereka - to give birth/bear (children) -- NOT in the
+    # source's own verb list, found indirectly: testing "vabereki"
+    # ("parents") against the engine surfaced a wrong 2-deep-extension
+    # collision with the newly-seeded 1-letter "b" root ("steal") --
+    # va+b+er+eki, nonsense. The real fix wasn't a WORD_EXCEPTIONS
+    # bypass but the missing root itself: adding "berek" makes
+    # "kubereka" resolve as a direct hit (checked before any extension
+    # stripping is attempted, so it wins first) and "vabereki" resolve
+    # correctly as va+berek+i (agentive, "parents" = "those who bear
+    # [children]") -- also fixes "kuberekwa" (passive, "to be born") for
+    # free via the existing extension mechanism. Confirmed "kuba"/"vaba"
+    # ("steal") still resolve correctly afterward.
 }
 
 # Never emitted as their own token. Stripped from the right during

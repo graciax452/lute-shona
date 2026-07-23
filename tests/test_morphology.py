@@ -188,6 +188,37 @@ def test_unseeded_word_falls_back_whole():
     check("mvura", ["mvura"])
 
 
+def test_shona_spacy_bulk_import():
+    # Second bulk source: shona-spacy's manually-verified JSON lexicon
+    # (MIT licensed, see rules.py's bulk-import comments). Includes two
+    # real collisions this specific dataset surfaced (both fixed, see
+    # rules.py) and one result that looks surprising but is actually a
+    # correct compositional parse, not a bug.
+    check("mukuwasha", ["mu", "kuwasha"])  # son-in-law
+    check("mukoma", ["mu", "koma"])  # elder brother
+    check("vabereki", ["va", "bereki"])  # parents -- NOT va+b(steal)+er+eki;
+    # fixed by adding the missing root "berek" (bear/give birth), not a
+    # WORD_EXCEPTIONS bypass -- see rules.py's VERB_ROOT_LEXICON comment.
+    check("kubereka", ["ku", "bereka"])  # to give birth
+    check("kuberekwa", ["ku", "berek", "wa"])  # to be born (passive)
+    check("murwere", ["murwere"])  # patient/sick person -- NOT mu+rw(fight,
+    # dialectal)+er(applicative)+ere; true collision from the Kaikki
+    # round's "rw" root, protected via WORD_EXCEPTIONS since the real
+    # derivation (from "-rwar-", to be sick) needs an unconfirmed vowel
+    # change, not simple concatenation.
+    check("varwere", ["varwere"])
+    check("mufundisi", ["mu", "fund", "isi"])  # pastor -- mu+fund(learn)+
+    # is(causative)+i(agentive): "one who causes others to learn." This
+    # IS the real etymology, not a coincidental collision -- deliberately
+    # left as a compositional parse, not an exception.
+    check("kuchikoro", ["ku", "chikoro"])  # to/at school -- locative on an
+    # already-prefixed noun (chi+koro), same pattern as mumunda/kutsime
+    check("kamwana", ["ka", "mwana"])  # small child -- diminutive on the
+    # already-prefixed cl.1 noun "mwana", same pattern as kamunhu
+    check("pfungwa", ["pfungwa"])  # thought/idea -- zero-prefix root,
+    # stays whole on its own (correct, nothing to strip)
+
+
 def test_kaikki_bulk_import_new_short_roots():
     # Spot-checks for the shortest new roots added by the Kaikki.org
     # bulk import (see rules.py's bulk-import comments) -- same "watch
