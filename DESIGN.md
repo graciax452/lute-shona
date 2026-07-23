@@ -756,6 +756,37 @@ exercise them. Reinforces the same lesson twice now: re-testing against
 from, is what actually finds collisions — the mechanism doesn't care
 which round introduced the colliding root.
 
+## 9b. Architecture fixes ported from lute-xhosa
+
+isiXhosa's own bulk-import work (a second, much larger Kaikki round)
+ran into the same verb/noun branch-order problem at a scale two
+real-text stories couldn't catch — short subject/object concords often
+literally spell out common noun prefixes once concatenated (e.g. `a`+
+`ba` == `aba-`), and once a lexicon is big enough that a matching verb
+root usually also exists (very common for deverbal/agentive nouns),
+*most* nouns of that shape become silently unreachable, not just a
+handful. An exhaustive checker
+(`scripts/check_collisions.py`, ported here too) found 3,779 affected
+words in isiXhosa's lexicon versus the 12 two real stories had found.
+
+Two fixes, both ported into this project's `morphology.py` verbatim
+(same mechanism, same reasoning) since the underlying architecture is
+identical: `split_word()` now prefers whichever branch (noun or verb)
+produces fewer tokens when both resolve, then the longer first-token
+match on remaining ties; `_try_verb_slot` tries TAM/object candidates
+shallowest-first instead of deepest-first. Full rationale for both is
+in lute-xhosa's `DESIGN.md`, "Architecture fixes" section — not
+repeated in full here to avoid drift between two copies of the same
+explanation.
+
+Running `scripts/check_collisions.py` against this project's own
+(much smaller) lexicon found 197 words with both a verb and noun
+reading — all either already resolved correctly by the fix or harmless
+ties (same boundary either way), zero genuine conflicts. Two existing
+`WORD_EXCEPTIONS` entries (`mudzidzisi`, `mukanwa`) turned out to be
+genuinely fixed rather than just newly-safe, and were removed — see
+`rules.py`'s `WORD_EXCEPTIONS` comment.
+
 ## 10. Forking for another Bantu language (e.g. isiXhosa)
 
 This was discussed explicitly before Shona was built: **don't design a

@@ -142,14 +142,13 @@ def test_noun_classes_from_reference_pdf():
     check("zibhuku", ["zi", "bhuku"])  # enormous book
 
 
-def test_verb_noun_branch_collision_exceptions():
-    # Real collisions found by dry-running the noun-classes reference:
-    # the noun-prefix reading is correct, but verb-slot (tried first)
-    # also happens to resolve against the verb lexicon and wins. Both
-    # protected via WORD_EXCEPTIONS -- see the comment there for the
-    # exact mechanism of each collision.
-    check("mudzidzisi", ["mudzidzisi"])  # teacher, cl.1 -- NOT mu+dzidz(causative "is")+i
-    check("mukanwa", ["mukanwa"])  # mouth, cl.18 locative -- NOT mu(subject)+ka(past)+nwa(drink)
+def test_verb_noun_branch_ties_resolved_by_architecture():
+    # These used to be WORD_EXCEPTIONS entries -- both fixed once
+    # split_word() started preferring whichever branch (noun or verb)
+    # produces fewer tokens when both resolve. See rules.py's
+    # WORD_EXCEPTIONS comment and scripts/check_collisions.py.
+    check("mudzidzisi", ["mu", "dzidzisi"])  # teacher, cl.1 -- NOT mu+dzidz(causative "is")+i
+    check("mukanwa", ["mu", "kanwa"])  # mouth, cl.18 locative -- NOT mu(subject)+ka(past)+nwa(drink)
 
 
 def test_true_homonyms_and_short_root_collisions():

@@ -56,24 +56,31 @@ PROPER_NOUNS = {
 #     showing the whole word.
 #   - real verb/noun branch collisions: words where the noun-prefix
 #     reading is correct but the verb-slot branch (tried first, see
-#     morphology.py) *also* happens to resolve against the verb lexicon,
-#     and wins by running first. Both found empirically by dry-running
-#     every example from the noun-classes reference against the actual
-#     code, not by inspection -- exactly the kind of case the module
-#     docstring's "cross-contamination" warning was anticipating in the
-#     abstract, now with concrete instances:
+#     morphology.py) *also* happens to resolve against the verb lexicon.
+#     UPDATE: split_word() now prefers whichever branch produces fewer
+#     tokens (ported from lute-xhosa, where scripts/check_collisions.py
+#     found this same pattern at scale -- see that project's DESIGN.md
+#     "Architecture fixes" section). This fixed both of the originally-
+#     documented instances below -- "mudzidzisi" and "mukanwa" are no
+#     longer WORD_EXCEPTIONS entries, since they now resolve correctly
+#     on their own (2-token noun reading beats the 3-token verb one).
+#     Kept the historical mechanism description since it's still useful
+#     context for why the collision existed in the first place:
 #       - "mudzidzisi" ("teacher", cl.1 mu- + whole noun "dzidzisi") --
-#         verb-slot wrongly resolves it as mu- (subject) + dzidz-
-#         (root, "learn") + -is- (causative) + -i, because "dzidz" is a
-#         seeded verb root and the causative-extension strip happens to
-#         land on it.
+#         verb-slot used to wrongly resolve it as mu- (subject) + dzidz-
+#         (root, "learn") + -is- (causative) + -i (3 tokens), because
+#         "dzidz" is a seeded verb root and the causative-extension
+#         strip happens to land on it -- now loses to the 2-token noun
+#         reading.
 #       - "mukanwa" ("mouth", cl.18 locative mu- + "kanwa") -- verb-slot
-#         wrongly resolves it as mu- (subject) + -ka- (past TAM) + nwa
-#         (root, "drink"), i.e. "you(pl) drank", because "nw" is a
-#         seeded verb root.
-#     Both are one-word patches, not a fix to the underlying ambiguity
-#     (there isn't a clean general fix -- see DESIGN.md). Expect more of
-#     these to surface as the lexicons grow; add them here as found.
+#         used to wrongly resolve it as mu- (subject) + -ka- (past TAM)
+#         + nwa (root, "drink"), i.e. "you(pl) drank" (3 tokens),
+#         because "nw" is a seeded verb root -- now loses to the
+#         2-token noun reading the same way.
+#     Run scripts/check_collisions.py after growing either lexicon --
+#     it checks the whole subject x TAM x object x root x
+#     terminal-vowel space against the noun lexicon directly, rather
+#     than waiting for a collision to happen to show up in real text.
 #   - true homonyms, where two genuinely different real words share a
 #     spelling and there's no morphological signal to pick between them:
 #       - "kamba" -- can be ka+mba ("small house", regular diminutive),
@@ -120,8 +127,6 @@ PROPER_NOUNS = {
 #         concatenation -- not confirmed, so left as a whole-word
 #         exception rather than guessing at a vowel-alternation rule.
 WORD_EXCEPTIONS = {
-    "mudzidzisi",
-    "mukanwa",
     "kamba",
     "mudiki",
     "vadikisa",

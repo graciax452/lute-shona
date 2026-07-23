@@ -84,10 +84,34 @@ def split_word(word: str) -> List[str]:
         return infinitive
 
     verb = _try_verb_slot(word, lword)
+    noun = _try_noun(word, lword)
+
+    if verb is not None and noun is not None:
+        # Both branches independently resolved -- prefer whichever
+        # analysis has fewer tokens (fewer morphemes guessed), the same
+        # "shallowest wins" principle _resolve_stem and _try_verb_slot
+        # already apply within their own search, extended here across
+        # the verb/noun branch split itself. Ported from lute-xhosa,
+        # where scripts/check_collisions.py found this exact pattern at
+        # scale (3,779 words affected, mostly short subject/object
+        # concords that happen to literally spell out common noun
+        # prefixes once concatenated -- e.g. "a"+"ba" == "aba-").
+        # Shona's smaller/differently-shaped lexicon hasn't been proven
+        # to have the same scale of problem, but the underlying
+        # mechanism (verb-slot tried first, short concords overlapping
+        # noun prefixes) is identical, so the same fix applies -- see
+        # lute-xhosa DESIGN.md's "Architecture fixes" section for the
+        # full writeup, and scripts/check_collisions.py here for
+        # Shona-specific verification.
+        if len(noun) < len(verb):
+            return noun
+        if len(noun) == len(verb) and len(noun[0]) > len(verb[0]):
+            return noun
+        return verb
+
     if verb is not None:
         return verb
 
-    noun = _try_noun(word, lword)
     if noun is not None:
         return noun
 
@@ -145,7 +169,17 @@ def _try_infinitive(word: str, lword: str) -> Optional[List[str]]:
 
 
 def _try_verb_slot(word: str, lword: str) -> Optional[List[str]]:
-    "subject prefix + optional TAM + optional object marker + resolved stem."
+    """
+    Subject prefix + optional TAM + optional object marker + resolved
+    stem. Candidates are tried shallowest-first: no TAM/no object
+    before either optional slot is consumed, one optional slot before
+    both. Same "least-stripped match wins" principle _resolve_stem
+    already applies to extensions, extended here to the TAM/object
+    slots (ported from lute-xhosa, where the old deepest-first order
+    was found to let a spurious object-marker match win over a
+    correct no-object reading in some cases -- see lute-xhosa
+    DESIGN.md's "Architecture fixes" section).
+    """
     for subj in _SUBJECT_PREFIXES_BY_LENGTH:
         if not lword.startswith(subj):
             continue
@@ -153,24 +187,31 @@ def _try_verb_slot(word: str, lword: str) -> Optional[List[str]]:
         after_subj = word[len(subj) :]
         lafter_subj = after_subj.lower()
 
-        tam_matches = [t for t in TAM_MARKERS if lafter_subj.startswith(t)]
-        for tam in sorted(tam_matches, key=len, reverse=True) + [None]:
-            after_tam = after_subj[len(tam) :] if tam else after_subj
-            lafter_tam = after_tam.lower()
+        tam_matches = sorted((t for t in TAM_MARKERS if lafter_subj.startswith(t)), key=len, reverse=True)
 
-            obj_matches = [o for o in OBJECT_MARKERS if lafter_tam.startswith(o)]
-            for obj in sorted(obj_matches, key=len, reverse=True) + [None]:
-                after_obj = after_tam[len(obj) :] if obj else after_tam
-                stem_tokens = _resolve_stem(after_obj)
-                if stem_tokens is None:
-                    continue
-                tokens = [subj_label]
-                if tam:
-                    tokens.append(after_subj[: len(tam)])
-                if obj:
-                    tokens.append(after_tam[: len(obj)])
-                tokens.extend(stem_tokens)
-                return tokens
+        candidates = [(None, None)]
+        obj_matches_no_tam = sorted((o for o in OBJECT_MARKERS if lafter_subj.startswith(o)), key=len, reverse=True)
+        candidates += [(None, obj) for obj in obj_matches_no_tam]
+        candidates += [(tam, None) for tam in tam_matches]
+        for tam in tam_matches:
+            after_tam = after_subj[len(tam) :]
+            lafter_tam = after_tam.lower()
+            obj_matches = sorted((o for o in OBJECT_MARKERS if lafter_tam.startswith(o)), key=len, reverse=True)
+            candidates += [(tam, obj) for obj in obj_matches]
+
+        for tam, obj in candidates:
+            after_tam = after_subj[len(tam) :] if tam else after_subj
+            after_obj = after_tam[len(obj) :] if obj else after_tam
+            stem_tokens = _resolve_stem(after_obj)
+            if stem_tokens is None:
+                continue
+            tokens = [subj_label]
+            if tam:
+                tokens.append(after_subj[: len(tam)])
+            if obj:
+                tokens.append(after_tam[: len(obj)])
+            tokens.extend(stem_tokens)
+            return tokens
     return None
 
 
