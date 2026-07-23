@@ -23,6 +23,10 @@ A handful of other small, tightly-gated tables handle known hard cases that don'
 
 **For the full reasoning behind every one of these — including the alternatives considered, what was tried and reverted, and guidance for forking to another Bantu language — see [DESIGN.md](DESIGN.md).**
 
+## Sources
+
+`NOUN_ROOT_LEXICON`/`VERB_ROOT_LEXICON` combine two sources: a small hand-picked seed (a structured noun-classes reference document plus a handful of confirmed example verbs) and a larger bulk import from [Kaikki.org's Shona Wiktionary extract](https://kaikki.org/dictionary/Shona/) (515 distinct words, machine-extracted from English Wiktionary's Shona entries — **licensed CC BY-SA 4.0**, per [Wiktionary's own content license](https://en.wiktionary.org/wiki/Wiktionary:Copyrights)). See `DESIGN.md` for the extraction method and what it did/didn't harvest. Per CC BY-SA 4.0, any redistribution of this project's data must likewise credit Wiktionary/Kaikki.org and remain share-alike.
+
 ## Install
 
 ```powershell

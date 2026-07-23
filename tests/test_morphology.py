@@ -188,6 +188,34 @@ def test_unseeded_word_falls_back_whole():
     check("mvura", ["mvura"])
 
 
+def test_kaikki_bulk_import_new_short_roots():
+    # Spot-checks for the shortest new roots added by the Kaikki.org
+    # bulk import (see rules.py's bulk-import comments) -- same "watch
+    # for collisions" category as the pre-existing 1-letter "d". None
+    # of these regressed anything in the rest of this file when checked.
+    check("kupa", ["ku", "pa"])  # to give -- new root "p"
+    check("kuba", ["ku", "ba"])  # to steal -- new root "b"
+    check("kufa", ["ku", "fa"])  # to die -- new root "f"
+    check("kumwa", ["ku", "mwa"])  # to drink, Karanga/Manyika dialect form
+    # of the already-seeded "nw" (kunwa) -- new root "mw", same surface
+    # string as the mw- class 1/3 noun-prefix allomorph (mwenga/mwando
+    # etc., see test_noun_classes_from_reference_pdf), but no collision
+    # is possible: the noun allomorph is only ever tried by the noun
+    # branch, which requires no subject-prefix match, while "mw" the
+    # verb root is only ever reached after a real subject prefix is
+    # stripped off first -- the two paths can't fire on the same word.
+    check("kurwa", ["ku", "rwa"])  # to fight -- new root "rw"
+    check("mumwe", ["mu", "mwe"])  # someone/other/one -- resolves via the
+    # new verb root "mw" + subjunctive/imperative -e, but the token
+    # boundary (mu | mwe) is the same one real Shona morphology gives
+    # for the indefinite stem "-mwe" ("other"), so this isn't a wrong
+    # split even though it's not the mechanism a fluent speaker would
+    # name -- see rules.py for the full note.
+    check("vababa", ["va", "baba"])  # fathers -- "baba" (father) is a new
+    # class 1a zero-prefix root; confirms it combines correctly with the
+    # existing va- class 2 prefix rather than only working standalone.
+
+
 def test_negative_have_construction():
     # ha- + subject concord + -na ("does/did not have")
     check("Haina", ["Ha", "i", "na"])  # ha + cl.9 concord "i" + na

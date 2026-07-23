@@ -487,6 +487,12 @@ split correctly, and an even smaller fraction need a one-word exception
 added after being caught. Expect this ratio to shift toward more
 correct splits as `NOUN_ROOT_LEXICON`/`VERB_ROOT_LEXICON` grow from
 more real text, not from more reference-grammar mining in the abstract.
+(This 123-word calibration predates §9a's bulk lexicon import — the
+lexicons are ~3-4x larger now, so a fresh run of the same story would
+be expected to split noticeably more, though it hasn't been re-run
+against a saved copy of that exact story text to get an updated number,
+unlike lute-xhosa's two validation stories, which were re-run and
+re-measured after their own bulk import — see §9a.)
 
 - **Most nouns outside the seed lexicon won't split.** Intentional —
   see §3. The seed grew substantially once the noun-classes reference
@@ -554,6 +560,96 @@ more real text, not from more reference-grammar mining in the abstract.
   (chi = object concord on a bare imperative) are both plausible; the
   current slot model has no way to represent the second reading and
   will always produce the first.
+
+## 9a. Bulk lexicon import from Kaikki.org — coverage vs. collision surface
+
+Same lesson as lute-xhosa's equivalent pass (that project was forked
+from this one, then diverged — see §10 — but hit the identical scaling
+problem independently and solved it the same way, worth reading
+alongside this section): hand-seeding from one reference document and
+one story doesn't scale past a few dozen roots. Before this pass,
+`NOUN_ROOT_LEXICON` had ~65 entries and `VERB_ROOT_LEXICON` had 17,
+built from §2's noun-classes reference plus the handful of verbs needed
+by the worked examples.
+
+**Source**: [Kaikki.org's Shona dictionary
+page](https://kaikki.org/dictionary/Shona/), a machine-readable
+Wiktextract of the Shona-language entries on English Wiktionary — 515
+distinct words. **Licensed CC BY-SA 4.0** (Wiktionary's content
+license). The page's primary `.jsonl` download is marked deprecated
+("will be removed in the near future," pointing to a raw-data
+alternative for anyone who needs to reprocess it) but was still live
+and downloadable at the time of this import.
+
+**Data shape**: each noun entry's `forms` list tags every attested
+singular/plural surface form with its noun class directly (e.g.
+`{"form": "masimba", "tags": ["class-6", "plural"]}`), sourced from
+Wiktionary's own inflection templates — this sidesteps needing to infer
+class from spelling. Verb entries store the bare citation root (the
+infinitive minus `ku-`) directly in the `word` field, though a handful
+of entries inconsistently kept the `ku-` anyway (confirmed redundant by
+cross-checking: each has a duplicate entry without it, e.g. both
+`"kuba"` and `"ba"` exist for "to steal"). All tone-marked diacritics
+(Wiktionary annotates Shona tone; standard orthography doesn't write
+it) were stripped via Unicode NFKD decomposition, verified against the
+source's own plain-text wikilink targets (`"masimbā"` decomposes to
+`"masimba"`, matching the link target exactly).
+
+**Extraction method, and why it differs from lute-xhosa's**: isiXhosa's
+extraction tried every known prefix against every word regardless of
+its stated class label, because that label didn't reliably predict
+which prefixes the live engine would try. Shona's situation is
+different and needed a different rule: several Shona noun classes have
+**no separable surface prefix at all** (class 5 mostly, class 1a — see
+§3/§9's existing notes on "zero/mutated surface, not modeled"), so
+blindly trying prefixes against every word regardless of class would
+have produced wrong strips on words that don't actually have a
+prefix to strip. Instead: for classes with a confirmed, regular,
+separable prefix (everything in `NOUN_CLASS_PREFIXES`, plus class 3
+aliased to class 1's `mu-`/`mw-` group, since Shona class 3 genuinely
+shares those prefixes — already true of the hand-seeded entries, Kaikki
+just tags them separately), the prefix is stripped only if the word's
+*own tagged class* confirms it should be there. For class 5 and 1a
+(zero-prefix), the word is added as its own root directly, no
+stripping attempted. For classes 9/10 (prefix present on *some* words
+only), a form is only harvested if it actually starts with the
+confirmed `i-`/`dzi-` string; forms using the zero/prenasalized surface
+are skipped rather than guessed at. Verb roots: strip a redundant
+leading `ku-` if present (see above), then strip the final vowel the
+same way the hand-seeded roots are stored.
+
+**A genuinely interesting find, not just a coverage number**: `kamba`
+(§7's confirmed tortoise/small-house homonym) turned out to be a
+three-way homonym, not two — Kaikki's data adds a class-5 `kamba`
+glossed as a synonym of `ingwe` (leopard). Doesn't change the fix
+(`WORD_EXCEPTIONS` still wins regardless of how many readings collide),
+just widens the reason it's needed — see the updated comment in
+`rules.py`.
+
+**Net result**: 209 new noun roots (~65 → ~274, roughly 4x) and 40 new
+verb roots (17 → 57, roughly 3x). Short new roots — noun `"na"`
+(China, Thursday, chi-+na), `"si"`, `"te"`, `"oko"`, `"nga"`; verb `"b"`
+(steal), `"f"` (die), `"p"` (give), plus dialectal `"mw"`/`"rw"`
+(Karanga/Manyika "drink", "fight") — were spot-checked individually
+against the existing lexicon and grammar for plausible collisions
+before merging (see `test_kaikki_bulk_import_new_short_roots` in
+`tests/test_morphology.py`), the same discipline §9's existing
+short-root warning calls for. One found on inspection wasn't a bug:
+`mumwe` ("someone/other/one") now resolves via the new verb root `mw`
++ subjunctive `-e`, but the token boundary (`mu` | `mwe`) is the same
+one real Shona morphology gives for the indefinite stem `-mwe`
+("other") — coincidentally correct at the character-boundary level
+even though the *mechanism* the engine used to get there isn't the one
+a fluent speaker would name. No genuine collisions (wrong split, not
+just wrong mechanism) were found in this pass — unlike lute-xhosa's
+bulk import, which surfaced several real ones. Worth being honest about
+why: this pass wasn't validated against a saved real-text corpus the
+way lute-xhosa's two stories were (see §9's note above), only against
+the existing test suite plus targeted probes of the new short roots —
+a full re-run of `sekuru kamba` (or a new story) against the grown
+lexicon, the way lute-xhosa's validation stories were re-run after
+*their* import, hasn't happened yet and would be the way to find
+anything this pass missed.
 
 ## 10. Forking for another Bantu language (e.g. isiXhosa)
 

@@ -76,16 +76,20 @@ PROPER_NOUNS = {
 #     these to surface as the lexicons grow; add them here as found.
 #   - true homonyms, where two genuinely different real words share a
 #     spelling and there's no morphological signal to pick between them:
-#       - "kamba" -- can be ka+mba ("small house", regular diminutive)
-#         or the indivisible animal name "tortoise". Confirmed from a
-#         real story ("Sekuru Kamba", Grandpa Tortoise) where it means
-#         tortoise every time it appears. Left whole rather than
-#         defaulting to the "small house" split: the diminutive reading
-#         is fully regular and recognizable even shown as one word,
-#         while "tortoise" is a specific vocabulary item that needs
-#         accurate whole-word tracking -- same undersplit-by-default
-#         tradeoff as everywhere else, just applied to a true lexical
-#         homonym instead of a branch-ordering collision.
+#       - "kamba" -- can be ka+mba ("small house", regular diminutive),
+#         the indivisible animal name "tortoise", or (per Kaikki.org's
+#         Wiktionary extract, found during the bulk-import pass below) a
+#         third reading: an unrelated class-5 zero-prefix noun glossed
+#         as a synonym of "ingwe" (leopard). Confirmed from a real story
+#         ("Sekuru Kamba", Grandpa Tortoise) where it means tortoise
+#         every time it appears. Left whole rather than defaulting to
+#         the "small house" split (or now guessing between three
+#         readings): the diminutive reading is fully regular and
+#         recognizable even shown as one word, while "tortoise" is a
+#         specific vocabulary item that needs accurate whole-word
+#         tracking -- same undersplit-by-default tradeoff as everywhere
+#         else, just applied to a true lexical homonym (now a three-way
+#         one) instead of a branch-ordering collision.
 #       - "mudiki"/"vadikisa" -- "diki" ("small") is a common adjective
 #         stem that combines with noun-class-agreement prefixes exactly
 #         like a noun (mudiki, vadiki, chidiki, ...). It collides with
@@ -304,6 +308,82 @@ NOUN_ROOT_LEXICON = {
     "dofo",     # zidofo
     "bhuku",    # zibhuku
     "huku",     # huku (class 9/10, zero-prefix -- kept for completeness, doesn't enable any split on its own)
+
+    # --- Bulk import from Kaikki.org's Shona Wiktionary extract, CC BY-SA
+    # 4.0 (Wiktionary content license) ---
+    # https://kaikki.org/dictionary/Shona/ -- a machine-readable extract
+    # of the Shona-language entries on English Wiktionary, 515 distinct
+    # words. Manual per-story seeding wasn't scaling here either (same
+    # lesson as lute-xhosa's isixhosa.click import): the hand-picked
+    # lexicon above, built from one reference document and one story, had
+    # ~65 noun roots after all that work.
+    #
+    # Extraction method: each noun entry's `forms` list tags every
+    # attested singular/plural form with its noun class (e.g.
+    # "class-6"/"plural"), sourced directly from Wiktionary's own
+    # inflection templates -- not guessed. For classes with a confirmed,
+    # regular, separable prefix (see NOUN_CLASS_PREFIXES above), the
+    # matching prefix is stripped the same way the live engine would;
+    # class 3 is aliased to class 1's mu-/mw- group, since Shona class 3
+    # genuinely shares those prefixes (already true of the hand-seeded
+    # entries above, Kaikki just tags them separately). For classes 5 and
+    # 1a, which have no separable surface prefix (confirmed above, "zero/
+    # mutated surface, not modeled"), the word itself is the root -- no
+    # stripping attempted. Classes 9/10 are only stripped when the word
+    # actually starts with the confirmed i-/dzi- prefix string; forms
+    # that instead show the zero/prenasalized surface are skipped
+    # entirely rather than guessed at. Diacritic tone marks in the source
+    # data (Wiktionary annotates Shona tone, standard orthography doesn't
+    # write it) are stripped via Unicode NFKD decomposition before
+    # matching -- verified against the source's own plain-text link
+    # targets (e.g. tone-marked "masimbā" decomposes to "masimba", which
+    # matches the wiki-link target "masimba" exactly).
+    #
+    # A genuinely interesting find from this pass, not just a coverage
+    # number: "kamba" (see the WORD_EXCEPTIONS comment above) turned out
+    # to be a three-way homonym, not two -- Kaikki's data adds a class-5
+    # "kamba" glossed as a synonym of "ingwe" (leopard), on top of the
+    # already-known tortoise/small-house ambiguity. Doesn't change the
+    # fix (WORD_EXCEPTIONS still wins), just widens the reason it's
+    # needed.
+    #
+    # Net result: 209 new noun roots, roughly 3-4x the hand-seeded count.
+    # Short (<=2 char) additions worth flagging for the same "watch for
+    # collisions" reason as the existing 1-letter "d"/"do"/"ti": "na"
+    # (from "China", Thursday, chi- + na), "si" (from "pasi", pa- +
+    # "below"), "te", "oko", "nga". None caused a test regression when
+    # checked, but the file's own docstring principle applies here too --
+    # watch for new collisions as more real text is run through.
+    "aka", "amburera", "ana", "baba", "bakayau", "bara", "bhachi",
+    "bhaiskopu", "bhandi", "bhatye", "bhaudhi", "bhazi", "bheka",
+    "bhikiri", "bhiza", "bhodhoro", "bhodoro", "bhodyera", "bhokisi",
+    "bhotoro", "bhucha", "bhunu", "bhurugwa", "bhurukwa", "bhurukwe",
+    "biki", "boora", "bundu", "bvupa", "bwato", "bwe", "chairi", "chisi",
+    "dako", "dapiri", "dhaka", "dhakwa", "dhina", "dhiraivha", "dhirezi",
+    "dhongana", "dhongi", "dhorobha", "dhuku", "domasi", "dumbu", "dzimu",
+    "dzinza", "edzi", "farinya", "fundi", "fupa", "futa", "garafa",
+    "gare", "garikuni", "garo", "garwe", "gazi", "gejo", "getsi",
+    "girazi", "godhi", "godo", "goko", "gore", "goridhe", "gorosi",
+    "govera", "gumi", "guyu", "gwa", "gwagwagwa", "gwanza", "gwavha",
+    "gweta", "hacha", "hachi", "hedheni", "hure", "jasi", "jazi",
+    "jichidza", "joki", "kamba", "kanduru", "kandyera", "kara",
+    "karikuni", "karwe", "kei", "kepe", "kirike", "kodo", "kodzi", "koko",
+    "komo", "komonisiti", "konde", "kope", "kore", "koro", "kumi", "kuru",
+    "kuyu", "kwai", "kwereti", "manyika", "mbwa", "mbwanana", "mhungu",
+    "murenga", "na", "nachisi", "nanazi", "ndimu", "nga", "ngezi",
+    "nhanga", "nwe", "nyararo", "oko", "onde", "oyo", "panji", "para",
+    "patara", "patya", "pfupa", "pfuva", "pikiri", "piri", "poko",
+    "ponji", "pundo", "pundu", "punga", "pungwe", "puno", "punu",
+    "purazi", "putukezi", "raparapa", "rasha", "rata", "rebvu", "remoni",
+    "rimi", "rize", "rokwe", "ropa", "rota", "roto", "rozvi", "rungu",
+    "ruva", "sadza", "shambo", "shanu", "shona", "shwa", "si", "simba",
+    "sondo", "sumburera", "svondo", "tako", "tanhatu", "tapiri", "tatu",
+    "taundi", "te", "tengeni", "tengi", "tina", "tobvu", "tokisi",
+    "tondo", "toro", "tsiva", "tsotsi", "tsvanzva", "tsvanzvabere",
+    "tsvo", "tumba", "tumbu", "turo", "turu", "tyairi", "uru", "usiku",
+    "varavandi", "verengi", "vhakacho", "vhiri", "vhuro", "viri",
+    "wayawaya", "wepu", "windo", "zai", "zamu", "zana", "zanda", "zezuru",
+    "zino", "ziso", "zukuru", "zuva",
 }
 
 # Closed set of word-initial verbal markers -- basic (present-tense-
@@ -425,6 +505,38 @@ VERB_ROOT_LEXICON = {
     "bik",    # kubika - cook
     "is",     # kuisa - put
     "pfek",   # kupfeka - the way one dresses
+
+    # --- Bulk import from Kaikki.org's Shona Wiktionary extract, CC BY-SA
+    # 4.0 -- see the matching comment above NOUN_ROOT_LEXICON for the
+    # source and general methodology. Verb-specific extraction notes:
+    # each verb entry's `word` field is (almost) already the bare
+    # infinitive-minus-"ku-" citation form; a handful of entries
+    # (kuba/kubika/kufa/kunyenga/kuota/kuverenga) inconsistently kept the
+    # "ku-" in the `word` field anyway -- confirmed as redundant, not a
+    # distinct root, since each has a duplicate entry without it (e.g.
+    # both "kuba" and "ba" exist for "to steal"). Stripped unconditionally
+    # before taking the final vowel off. Diacritic tone marks handled the
+    # same NFKD-strip as the noun side. Entries containing an apostrophe
+    # (e.g. "n'wa", the Korekore dialect form of "to drink") were
+    # excluded -- unclear whether Lute's word-character set treats "'" as
+    # part of the word or a boundary, and getting it wrong either way
+    # risks silently mis-tokenizing; left as a known gap rather than
+    # guessed at.
+    #
+    # Three of these are dialectal variants of forms already in the seed
+    # list above, not new vocabulary: "mw" (kumwa, Karanga/Manyika "to
+    # drink", alongside the already-seeded "nw" from kunwa) and "rw" and
+    # "p"/"b" are genuinely new short roots ("-pa-" give, "-ba-" steal) --
+    # flagged, like the noun side's short additions, as worth watching
+    # for collisions precisely because they're short (same category as
+    # the existing 1-letter "d").
+    #
+    # Net result: 40 new verb roots, roughly 3x the hand-seeded count.
+    "b", "bat", "bhadhar", "chair", "chip", "dan", "dhak", "dhakw",
+    "dhonz", "dhur", "dondodz", "f", "fund", "han", "kam", "kang",
+    "kweny", "kweret", "mw", "nyarar", "nyeng", "onek", "ones", "ot",
+    "p", "rar", "rim", "rot", "rw", "sek", "simb", "tyair", "umb",
+    "uray", "varavand", "vhar", "vir", "ziv", "zvar", "zvimb",
 }
 
 # Never emitted as their own token. Stripped from the right during
